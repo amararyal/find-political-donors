@@ -3,173 +3,130 @@ import math
 import datetime
 import sys
 import time
-#Declare a list to hold data
-donarData = []
-#------------Methods---------------------------------------------
-#Method to compute Median
-def findMedian(data):
-    data=sorted(data)
-    length=len(data)
-    if (length==1):
+from collections import defaultdict
+
+# Declare two lists to hold the relevant data for the two problem
+donor_data = []
+median_by_zip_data = []
+
+#Declare two dictionaries for the purpose of grouping
+group_data_by_CMTE_ID_and_date = defaultdict(list)
+group_data_by_CMTE_ID_and_zip_code = defaultdict(list)
+
+# Methods
+# Method to compute Median
+def find_median(data):
+    data = sorted(data)
+    length = len(data)
+    if length == 1:
         return data[0]
-    elif(length%2==0):
-        return round(((float)(data[int(length/2)])+(float)(data[int(length/2)-1]))/2)
+    elif length % 2 == 0:
+        return round((float(data[int(length / 2)]) + float(data[int(length / 2) - 1])) / 2)
     else:
-        return (data[int(length/2)])
+        return data[int(length / 2)]
 
-#Method to check whether the date is valid or not
-def validateDate(date_text):
-    correctDate = None
-    try:
-        newDate = datetime.datetime.strptime(date_text, '%m%d%Y')
-        correctDate = True
-    except ValueError:
-        correctDate = False
-    return correctDate
-#Method to convert string date to  date object
-def convertToDateObject(date_text):
-    try:
-        newDate = datetime.datetime.strptime(date_text, '%m%d%Y')
-    except ValueError:
-       raise ValueError('verify the date before conversion')
-    return newDate
-#Method to convert the date object to string date
-def convertDateObjectToString(date_object):
-    try:
-        newDate=date_object.strftime('%m%d%Y')
-    except ValueError:
-       raise ValueError('verify the date before conversion')
-    return newDate
 
-#---------------------------------------------------------------------------------------------------
-#Method to process the Data (This method is called from main)
-#---------------------------------------------------------------------------------------------------
+# Method to check whether the date is valid or not
+def validate_date(date_text):
+    correct_date = None
+    try:
+        new_date = datetime.datetime.strptime(date_text, '%m%d%Y')
+        correct_date = True
+    except ValueError:
+        correct_date = False
+    return correct_date
 
-def processData(inputFileName,outputFileNameforMedianValuebyZip,outputFileNameforMedianValuebyTime):
-    file  = open(outputFileNameforMedianValuebyZip,"w")
-    #------------------------Reading Input sequentially to simulate streaming-----------------------
-    # Reading input file
-    with io.open(inputFileName,\
-    'r', encoding='latin-1') as infile:
+
+# Method to convert string date to  date object
+def convert_to_date_object(date_text):
+    try:
+        new_date = datetime.datetime.strptime(date_text, '%m%d%Y')
+    except ValueError:
+        raise ValueError('verify the date before conversion')
+    return new_date
+
+
+# Method to convert the date object to string date
+def convert_date_object_to_string(date_object):
+    try:
+        new_date = date_object.strftime('%m%d%Y')
+    except ValueError:
+        raise ValueError('verify the date before conversion')
+    return new_date
+
+
+# Method to process the Data (This method is called from main)
+def process_data(input_file_name, output_filename_for_median_value_by_zip, output_filename_for_median_value_by_time):
+# Open files to write output
+    file1 = open(output_filename_for_median_value_by_zip, "w")
+    file2 = open(output_filename_for_median_value_by_time, "w")
+
+# Reading Input sequentially to simulate streaming
+    i = 0
+    with io.open(input_file_name, \
+                 'r', encoding='latin-1') as infile:
+
         for line in infile:  # looping through the lines
-           splitted=line.split('|') #Split the data
-           #Clean the data for Analysis purpose
-           #If the 'OTHER_ID' field is non-empty and 'CMTE_ID' and 'TRANSACTION_AMOUNT' fields are empty, ignore the line
-           if (splitted[15]!="" or splitted[0]=="" or splitted[14]=="" or (int(splitted[14]))<0):
-                continue
-           # Filter the required fields and append the resulting data in the list in the form of dictionary
-           donarData.append({
-               'cmteId': splitted[0],
-               'transactionAmount': splitted[14],
-               'transactionDate': splitted[13],
-               'zipCode': splitted[10][0:5], # Consider only first 5 digits in the Zip Code
-            })
-           #--------------------------Problem1------------------------
-           #Problem1: Find  Running Median by Zip and Receipt Code
-           insideLoopOnce=False
-           for data in donarData:
-                # Ignore data if Zip_Code field is empty or contains less than 5 digits
-                if(data['zipCode']=="" or len(data['zipCode'])<5 ):
-                    continue
-                insideLoopOnce=True
-                #pull all the transcation Amounts with the current zip code from the list donarData
-                filteredData=[(int)(d['transactionAmount']) for d in donarData if d['zipCode'] == data['zipCode']] 
-           if(insideLoopOnce is True):
-                #Compute Median
-                median=(int)(findMedian(filteredData))
-                #Compute total amount
-                totalAmount=sum(filteredData)
-                #Count the number of transactions
-                count=len(filteredData)
-                #print(data['cmteId']+"|"+data['zipCode']+"|"+str(median)+"|"+str(count)+"|"+str(totalAmount))
-                stringtobeWritten=data['cmteId']+"|"+data['zipCode']+"|"+str(median)+"|"+str(count)+"|"+str(totalAmount)+"\n"
-                file.write(stringtobeWritten)  
-    file.close()
-    # Delete the list to free memory
-    del filteredData
-    #--------------------------Problem2------------------------
-    #Problem2: Find  Median by Time
-    currentData=[]# Declare a list to hold the relevant data for the problem
-
-    for data in donarData:
-        # Ignore data if date field is empty or invalid
-        if ((data['transactionDate'] == "") or (not validateDate(data['transactionDate']))):
-            continue
-        # Convert the date string into date object using method convertToDateObject
-        #No need to validate the date in the convertToDateObject method since all the invalid dates are already filtered
-        date=convertToDateObject(data['transactionDate'])
-        # store the relevant data in the form of dictionary in the list currentData
-        currentData.append({
-            'transactionDate': date,
-            'cmteId': data['cmteId'],
-            'transactionAmount': data['transactionAmount']
-        })
-    #sort the whole data by ReceiptID
-    sortedByReceiptID=sorted(currentData, key=lambda k: (k['cmteId'],k['transactionDate']))
-    # pointer to keep track of the current data
-    currentPointer=0
-    # List for storing the median values of amount with date and other parameters
-    medianValueByDate=[]
-    #Loop until the end of the sorted list
-    while(currentPointer<len(sortedByReceiptID)):
-        #pull current CMTE_ID, TRANSACTION_DATE
-        currentcmteID=sortedByReceiptID[currentPointer]['cmteId']
-        currentDate = sortedByReceiptID[currentPointer]['transactionDate']
-        #Declare a list temporayListOfAmount to store the donation amounts of all matching dates and CMTE_ID
-        #with the current date and CMTE_ID
-        temporaryListOfAmount = []
-        # Loop until  CMTE_ID and dtae of the new records are same as the current CMTE_ID and current date.
-        while (sortedByReceiptID[currentPointer]['cmteId']==currentcmteID \
-        and sortedByReceiptID[currentPointer]['transactionDate']==currentDate ):
-            # Append the list temporaryListOfAmount with all new amounts of data satisfying above condition in the
-            #  while loop
-            temporaryListOfAmount.append(int(sortedByReceiptID[currentPointer]['transactionAmount']))
-            #Increment current pointer
-            currentPointer = currentPointer + 1
-            #Break the inner loop if end of the records is reached
-            #If break happens,control will come out of the outer loop as well;
-            #  because of the condition in this while loop:'currentPointer<len(sortedByReceiptID)'
-            if currentPointer >= len(sortedByReceiptID):
+            filtered_data = []
+            splited = line.split('|')  # Split the data
+            i = i + 1
+            if i == 10000:
                 break
-        #print(temporaryListOfAmount)
-        # Find the Median of the Amounts
-        median = (int)(findMedian(temporaryListOfAmount))
-        #Find the total number of transactions in this list
-        count=len(temporaryListOfAmount)
-        #find the sum of the amounts in this list
-        totalAmount=sum(temporaryListOfAmount)
-        #Insert the median, count and totalAmount with their corresponding date and CMTE_ID in the list medianValueByDate.
-        medianValueByDate.append({
-            'cmteId':sortedByReceiptID[currentPointer-1]['cmteId'],
-            'transactionDate':(sortedByReceiptID[currentPointer-1]['transactionDate']),
-            'median':median,
-            'count':count,
-            'totalAmount':totalAmount
-        })
-    #The list is already sorted first by receiptID and then by date cronologically
-    #Reformat the date  to the original format
-    for i in range(len(medianValueByDate)):
-        medianValueByDate[i]['transactionDate']=convertDateObjectToString(medianValueByDate[i]['transactionDate'])
-    file  = open(outputFileNameforMedianValuebyTime,"w")
-    for ele in medianValueByDate:
-        #print(str(ele['cmteId']) + "|" + str(ele['transactionDate']) + "|" + str(ele['median']) + "|" + str(ele['count'])  + "|" + str(ele['totalAmount']) )
-        lineString=str(ele['cmteId']) + "|" + str(ele['transactionDate']) + "|" + str(ele['median']) + "|" + str(
-            ele['count']) + "|" + str(ele['totalAmount'])+"\n"
-        file.write(lineString)
-    file.close()
-#-----------------------------------------------------------------------------------------------------------------------------------------------------------
-#Entry point of Program
-#-----------------------------------------------------------------------------------------------------------------------------------------------------------
+            # If the 'OTHER_ID' field is non-empty and 'CMTE_ID' and 'TRANSACTION_AMOUNT' fields are empty, ignore the line
+            if splited[15] != "" or splited[0] == "" or splited[14] == "" or (int(splited[14])) < 0:
+                continue
 
-if __name__ =="__main__":
-    start=time.time()
+# Filter the required fields and append the resulting data in the list in the form of dictionary
+            donor_data.append({
+                'cmteId': splited[0],
+                'transactionAmount': splited[14],
+                'transactionDate': splited[13],
+                'zipCode': splited[10][0:5],  # Consider only first 5 digits in the Zip Code
+                })
+# Problem1: Find  Running Median by Zip and Receipt Code
+            # Ignore data if zip field is empty or invalid
+            if splited[10] != "" and len(splited[10]) >= 5:
+                current_zip = splited[10][0:5]
+                current_CMTE_ID = splited[0]
+                current_amount=splited[14]
+                # group data by cmte_id and zip_code
+                group_data_by_CMTE_ID_and_zip_code[(current_CMTE_ID, current_zip)].append(int(current_amount))
+                #Filter the data having same zip and cmte_id as the current ones
+                filtered_data = [d[1] for d in group_data_by_CMTE_ID_and_zip_code.items() if
+                                 d[0][1] == current_zip and d[0][0] == current_CMTE_ID][0]
+                file1.write(str(current_CMTE_ID) + "|" + str(current_zip) + "|" + str(
+                   int(find_median(filtered_data))) + "|" + str(
+                   len(filtered_data)) + "|" + str(sum(filtered_data)) + "\n")
+        file1.close()
+    # Delete the list to free memory
+    del filtered_data
+
+
+#Problem2: Find  Median by Time
+    group_data_by_CMTE_ID_and_date = defaultdict(list)
+    for obj in donor_data:
+        # Ignore data if date field is empty or invalid
+        if (obj['transactionDate'] != "") and (validate_date(obj['transactionDate'])):
+            group_data_by_CMTE_ID_and_date[(obj['cmteId'], convert_to_date_object(obj['transactionDate']))].append(int(obj['transactionAmount']))
+
+    # sort the whole data by ReceiptID and then by Date
+    group_data_by_CMTE_ID_and_date = sorted(group_data_by_CMTE_ID_and_date.items(), key=lambda x: (x[0][0], x[0][1]))
+    for x in group_data_by_CMTE_ID_and_date:
+        file2.write(str(x[0][0]) + "|" + str(convert_date_object_to_string(x[0][1])) + "|" + str(
+            int(find_median(x[1]))) + "|" + str(len(x[1])) + "|" + str(sum(x[1])) + "\n")
+    file2.close()
+
+
+# Main: Entry point of Program
+if __name__ == "__main__":
+    start = time.time()
     try:
-        inputFileName = sys.argv[1] # Input File Name
-        outputFileNameforMedianValuebyZip=sys.argv[2]#Output File Name for Median Value by zip
-        outputFileNameforMedianValuebyTime = sys.argv[3]#Output File Name for Median Value by Time
+        input_file_name = sys.argv[1]  # Input File Name
+        output_filename_for_median_value_by_zip = sys.argv[2]  # Output File Name for Median Value by zip
+        output_filename_for_median_value_by_time = sys.argv[3]  # Output File Name for Median Value by Time
     except IndexError:
-        print ("Usage: ./src/find_political_donors.py  ./input/itcont.txt  ./output/medianvals_by_zip.txt  ./output/medianvals_by_date.txt")
+        print("Usage: ./src/find_political_donors.py  ./input/itcont.txt  ./output/medianvals_by_zip.txt / ./output/medianvals_by_date.txt")
         sys.exit(1)
-    processData(inputFileName,outputFileNameforMedianValuebyZip,outputFileNameforMedianValuebyTime)
-    end=time.time()
-    print(end-start)
+    process_data(input_file_name, output_filename_for_median_value_by_zip, output_filename_for_median_value_by_time)
+    end = time.time()
+    print(end - start)
