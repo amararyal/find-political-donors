@@ -62,16 +62,12 @@ def process_data(input_file_name, output_filename_for_median_value_by_zip, outpu
     file2 = open(output_filename_for_median_value_by_time, "w")
 
 # Reading Input sequentially to simulate streaming
-    i = 0
     with io.open(input_file_name, \
                  'r', encoding='latin-1') as infile:
 
         for line in infile:  # looping through the lines
             filtered_data = []
             splited = line.split('|')  # Split the data
-            i = i + 1
-            if i == 10000:
-                break
             # If the 'OTHER_ID' field is non-empty and 'CMTE_ID' and 'TRANSACTION_AMOUNT' fields are empty, ignore the line
             if splited[15] != "" or splited[0] == "" or splited[14] == "" or (int(splited[14])) < 0:
                 continue
