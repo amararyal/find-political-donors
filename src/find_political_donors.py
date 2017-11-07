@@ -5,9 +5,9 @@ import sys
 import time
 from collections import defaultdict
 
-# Declare two lists to hold the relevant data for the two problem
+# Declare a list to hold the relevant data 
 donor_data = []
-median_by_zip_data = []
+#median_by_zip_data = []
 
 #Declare two dictionaries for the purpose of grouping
 group_data_by_CMTE_ID_and_date = defaultdict(list)
